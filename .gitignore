@@ -1,0 +1,28 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.tool/
+build/
+*.iml
+
+# Android específicos
+android/**/.gradle
+android/local.properties
+android/app/google-services.json
+
+# iOS específicos
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner/GoogleService-Info.plist
+ios/firebase_app_id_file.json
+
+# Firebase/FlutterFire
+lib/firebase_options.dart
+
+# Web
+.web_plugins/
+
+# Segredos e variáveis de ambiente
+.env
