@@ -1,5 +1,10 @@
+import 'package:daily_company/presentation/auth/pages/cadastro_page_funcionario.dart';
+import 'package:daily_company/presentation/pages/menu_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'init_page.dart'; 
+import 'package:shared_preferences/shared_preferences.dart';
+import 'init_page.dart';
+import 'recuperaSenha.dart';
 
 class LoginPageFuncionario extends StatefulWidget {
   const LoginPageFuncionario({super.key});
@@ -9,19 +14,72 @@ class LoginPageFuncionario extends StatefulWidget {
 }
 
 class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
-  final TextEditingController _dCodeController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _showErrorMessage = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Preencha e-mail e senha';
+      });
+      return;
+    }
+
     setState(() {
-      if (_dCodeController.text.isEmpty || _passwordController.text != "123") {
-        _showErrorMessage = true;
-      } else {
-        _showErrorMessage = false;
-        print("Login Funcionário Sucesso!");
-      }
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+      final user = FirebaseAuth.instance.currentUser;
+      final prefs = await SharedPreferences.getInstance();
+      final company = prefs.getString('companyName') ?? 'Minha Empresa';
+      final userName = user?.displayName?.trim().isNotEmpty == true
+          ? user!.displayName!
+          : email.split('@').first;
+      final messenger = ScaffoldMessenger.of(context);
+      setState(() {
+        _errorMessage = null;
+      });
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Login realizado com sucesso!')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              MenuPage(userName: userName, companyName: company),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = switch (e.code) {
+          'user-not-found' => 'Usuário não encontrado',
+          'wrong-password' => 'Senha incorreta',
+          'invalid-email' => 'E-mail inválido',
+          'user-disabled' => 'Conta desativada',
+          _ => 'Erro ao fazer login. Verifique os dados.',
+        };
+      });
+    } catch (_) {
+      setState(() {
+        _errorMessage = 'Erro ao fazer login. Tente novamente.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -38,7 +96,13 @@ class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
               top: 10,
               left: 10,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                padding: const EdgeInsets.all(18),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 30,
+                ),
                 onPressed: () {
                   if (Navigator.canPop(context)) {
                     Navigator.pop(context);
@@ -59,56 +123,118 @@ class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
                     const SizedBox(height: 40),
                     Container(
                       height: 160,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
-                        child: Icon(Icons.person_pin, size: 90, color: primaryBlue),
+                        child: Icon(
+                          Icons.person_pin,
+                          size: 90,
+                          color: primaryBlue,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Olá, Funcionário!', 
-                      style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Olá, Funcionário!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 25),
                       child: Container(
                         padding: const EdgeInsets.all(25),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Center(child: Text('Faça seu Login', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
-                            const Center(child: Text('Entre para continuar', style: TextStyle(color: Colors.grey, fontSize: 14))),
+                            const Center(
+                              child: Text(
+                                'Faça seu Login',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const Center(
+                              child: Text(
+                                'Entre para continuar',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 25),
-                            const Text("D-CODE < >", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                            const Text(
+                              "E-MAIL",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 5),
                             TextField(
-                              controller: _dCodeController,
+                              controller: _emailController,
                               decoration: InputDecoration(
+                                hintText: "Ex: funcionario@empresa.com",
                                 fillColor: lightGrey,
                                 filled: true,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide.none,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 15),
-                            const Text("SENHA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+                            const Text(
+                              "SENHA",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 5),
                             TextField(
                               controller: _passwordController,
                               obscureText: true,
                               decoration: InputDecoration(
-                                suffixIcon: const Icon(Icons.lock_outline, color: Colors.black),
+                                suffixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: Colors.black,
+                                ),
                                 fillColor: lightGrey,
                                 filled: true,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide.none,
+                                ),
                               ),
                             ),
-                            if (_showErrorMessage)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 10),
+                            if (_errorMessage != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 10),
                                 child: Center(
-                                  child: Text("* Identificação ou senha incorreta *",
-                                    style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             const SizedBox(height: 20),
@@ -116,19 +242,88 @@ class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
                               width: double.infinity,
                               height: 50,
                               child: ElevatedButton(
-                                onPressed: _handleLogin,
+                                onPressed: _isLoading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: primaryBlue,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
-                                child: const Text("CONTINUAR", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 3,
+                                        ),
+                                      )
+                                    : const Text(
+                                        "CONTINUAR",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
+                            const SizedBox(height: 10),
                             Center(
                               child: TextButton(
-                                onPressed: () {},
-                                child: const Text("Esqueceu a senha?", style: TextStyle(color: primaryBlue, decoration: TextDecoration.underline)),
+                                onPressed: () {
+                                  // NAVEGAÇÃO PARA RECUPERAÇÃO DE SENHA
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const ForgotPasswordPage(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  "Esqueceu a senha?",
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
                               ),
+                            ),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  "Não tem uma conta? ",
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SignupPageFuncionario(),
+                                      ),
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: const Text(
+                                    "Cadastre-se aqui",
+                                    style: TextStyle(
+                                      color: primaryBlue,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

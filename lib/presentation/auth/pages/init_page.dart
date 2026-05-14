@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_page_funcionario.dart'; 
 import 'login_page_empreendedor.dart';
 
+
 class InitPage extends StatelessWidget {
   const InitPage({super.key});
 
@@ -96,34 +97,7 @@ class InitPage extends StatelessWidget {
                             );
                           },
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              "Não tem uma conta? ",
-                              style: TextStyle(color: Colors.black54),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                print("Ir para Cadastro");
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                "Cadastre-se aqui",
-                                style: TextStyle(
-                                  color: primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        // Removido o Row com o TextButton de cadastro
                       ],
                     ),
                   ),
