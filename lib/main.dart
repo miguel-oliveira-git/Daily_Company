@@ -6,16 +6,12 @@ import 'package:daily_company/presentation/auth/pages/init_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 2. Carregue o arquivo .env antes de inicializar o Firebase
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
-    // Caso o arquivo .env não exista (útil para avisar sua equipe)
     debugPrint("Erro ao carregar o arquivo .env: $e");
   }
 
-  // 3. Agora o Firebase pode inicializar usando as variáveis que estão no .env
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

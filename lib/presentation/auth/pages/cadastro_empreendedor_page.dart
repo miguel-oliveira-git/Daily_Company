@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,6 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   Future<void> _registerEmpreendedor() async {
-    final currentContext = context;
     final company = _companyController.text.trim();
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
@@ -40,8 +40,9 @@ class _SignupPageState extends State<SignupPage> {
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('Preencha todos os campos para continuar.'),
@@ -51,8 +52,9 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     if (password != confirmPassword) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('As senhas não coincidem.'),
@@ -62,8 +64,9 @@ class _SignupPageState extends State<SignupPage> {
     }
 
     if (password.length < 6) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('A senha deve ter pelo menos 6 caracteres.'),
@@ -83,8 +86,27 @@ class _SignupPageState extends State<SignupPage> {
       );
       final user = FirebaseAuth.instance.currentUser;
       await user?.updateDisplayName(name);
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('companies').doc(user.uid).set({
+          'name': company,
+          'ownerUid': user.uid,
+          'createdAt': Timestamp.now(),
+        });
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': name,
+          'email': email,
+          'role': 'owner',
+          'companyId': user.uid,
+          'companyName': company,
+          'createdAt': Timestamp.now(),
+        });
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('companyName', company);
+      await prefs.setString('companyId', user?.uid ?? '');
       if (!mounted) return;
       await showDialog(
         context: context,

@@ -1,10 +1,11 @@
 import 'package:daily_company/presentation/auth/pages/cadastro_page_funcionario.dart';
 import 'package:daily_company/presentation/pages/menu_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'init_page.dart';
-import 'recuperaSenha.dart';
+import 'recupera_senha.dart';
 
 class LoginPageFuncionario extends StatefulWidget {
   const LoginPageFuncionario({super.key});
@@ -36,42 +37,46 @@ class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       if (!mounted) return;
-      final user = FirebaseAuth.instance.currentUser;
+      final user = credential.user;
       final prefs = await SharedPreferences.getInstance();
-      final company = prefs.getString('companyName') ?? 'Minha Empresa';
+      var company = prefs.getString('companyName') ?? 'Minha Empresa';
+
+      if (user != null) {
+        final storedCompanyId = prefs.getString('companyId');
+        final storedCompanyName = prefs.getString('companyName');
+        if (storedCompanyId == null || storedCompanyName == null) {
+          _refreshCompanyInfo(user.uid);
+        }
+      }
+      if (!mounted) return;
+
       final userName = user?.displayName?.trim().isNotEmpty == true
           ? user!.displayName!
           : email.split('@').first;
-      final messenger = ScaffoldMessenger.of(context);
-      setState(() {
-        _errorMessage = null;
-      });
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Login realizado com sucesso!')),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              MenuPage(userName: userName, companyName: company),
-        ),
-      );
+      _navigateToMenu(context, userName, company);
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      debugPrint('Login error code: ${e.code}');
+      debugPrint('Login error message: ${e.message}');
       setState(() {
         _errorMessage = switch (e.code) {
           'user-not-found' => 'Usuário não encontrado',
           'wrong-password' => 'Senha incorreta',
           'invalid-email' => 'E-mail inválido',
           'user-disabled' => 'Conta desativada',
-          _ => 'Erro ao fazer login. Verifique os dados.',
+          'operation-not-allowed' => 'Login por e-mail e senha não está habilitado.',
+          'network-request-failed' => 'Falha de rede. Verifique sua conexão.',
+          _ => e.message ?? 'Erro ao fazer login. Tente novamente.',
         };
       });
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('Login error: $e');
       setState(() {
         _errorMessage = 'Erro ao fazer login. Tente novamente.';
       });
@@ -79,6 +84,46 @@ class _LoginPageFuncionarioState extends State<LoginPageFuncionario> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  void _navigateToMenu(BuildContext context, String userName, String company) {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _errorMessage = null;
+    });
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Login realizado com sucesso!')),
+    );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MenuPage(userName: userName, companyName: company),
+      ),
+    );
+  }
+
+  Future<void> _refreshCompanyInfo(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (!userDoc.exists) return;
+
+      final data = userDoc.data();
+      if (data == null) return;
+
+      final companyName = data['companyName'] as String?;
+      final companyId = data['companyId'] as String?;
+      if (companyName == null && companyId == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      if (companyName != null) {
+        await prefs.setString('companyName', companyName);
+      }
+      if (companyId != null) {
+        await prefs.setString('companyId', companyId);
+      }
+    } catch (e) {
+      debugPrint('Background company refresh failed: $e');
     }
   }
 

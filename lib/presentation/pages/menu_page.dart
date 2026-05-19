@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'employees_page.dart';
 
 class MenuPage extends StatelessWidget {
   final String? userName;
@@ -117,11 +118,17 @@ class MenuPage extends StatelessWidget {
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
                   childAspectRatio: 0.95,
-                  children: const [
-                    _MenuCard(icon: Icons.calendar_month, label: 'Calendário'),
-                    _MenuCard(icon: Icons.task_alt, label: 'Tarefas'),
-                    _MenuCard(icon: Icons.group, label: 'Funcionários'),
-                    _MenuCard(icon: Icons.groups, label: 'Equipes'),
+                  children: [
+                    const _MenuCard(icon: Icons.calendar_month, label: 'Calendário'),
+                    const _MenuCard(icon: Icons.task_alt, label: 'Tarefas'),
+                    _MenuCard(
+                      icon: Icons.group,
+                      label: 'Funcionários',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EmployeesPage()),
+                      ),
+                    ),
+                    const _MenuCard(icon: Icons.groups, label: 'Equipes'),
                   ],
                 ),
               ),
@@ -136,8 +143,9 @@ class MenuPage extends StatelessWidget {
 class _MenuCard extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
-  const _MenuCard({required this.icon, required this.label});
+  const _MenuCard({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +156,7 @@ class _MenuCard extends StatelessWidget {
       elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () {
+        onTap: onTap ?? () {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('$label selecionado')));

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,6 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
   }
 
   Future<void> _registerFuncionario() async {
-    final currentContext = context;
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -38,8 +38,9 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('Preencha todos os campos para continuar.'),
@@ -49,8 +50,9 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
     }
 
     if (password != confirmPassword) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('As senhas não coincidem.'),
@@ -60,8 +62,9 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
     }
 
     if (password.length < 6) {
+      if (!mounted) return;
       await showDialog(
-        context: currentContext,
+        context: context,
         builder: (context) => const AlertDialog(
           title: Text('Erro'),
           content: Text('A senha deve ter pelo menos 6 caracteres.'),
@@ -74,6 +77,61 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
       _isLoading = true;
     });
 
+    final dCode = _dCodeController.text.trim();
+    if (dCode.isEmpty) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => const AlertDialog(
+          title: Text('Erro'),
+          content: Text('Digite o D-CODE da empresa para continuar.'),
+        ),
+      );
+      return;
+    }
+
+    final inviteSnapshot = await FirebaseFirestore.instance
+        .collection('employeeInviteCodes')
+        .where('code', isEqualTo: dCode)
+        .limit(1)
+        .get();
+
+    if (inviteSnapshot.docs.isEmpty) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => const AlertDialog(
+          title: Text('Erro'),
+          content: Text('D-CODE inválido. Peça o código ao seu gestor.'),
+        ),
+      );
+      return;
+    }
+
+    final inviteData = inviteSnapshot.docs.first.data();
+    final companyId = inviteData['companyId'] as String?;
+    final companyName = inviteData['companyName'] as String?;
+    if (companyId == null || companyName == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => const AlertDialog(
+          title: Text('Erro'),
+          content: Text('D-CODE inválido. Empresa não encontrada.'),
+        ),
+      );
+      return;
+    }
+
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -81,11 +139,21 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
       );
       final user = FirebaseAuth.instance.currentUser;
       await user?.updateDisplayName(name);
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': name,
+          'email': email,
+          'role': 'employee',
+          'companyId': companyId,
+          'companyName': companyName,
+          'inviteCode': dCode,
+          'createdAt': Timestamp.now(),
+        });
+      }
       final prefs = await SharedPreferences.getInstance();
-      final storedCompany = _dCodeController.text.trim().isNotEmpty
-          ? 'D-CODE: ${_dCodeController.text.trim()}'
-          : 'Minha Empresa';
-      await prefs.setString('companyName', storedCompany);
+      await prefs.setString('companyName', companyName);
+      await prefs.setString('companyId', companyId);
       if (!mounted) return;
       await showDialog(
         context: context,
