@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EmployeesPage extends StatefulWidget {
@@ -21,10 +22,19 @@ class _EmployeesPageState extends State<EmployeesPage> {
   bool _isGenerating = false;
   bool _isSaving = false;
 
+  // ✅ CORREÇÃO: estado de carregamento para aguardar os dados da empresa
+  bool _isLoadingCompany = true;
+
   @override
   void initState() {
     super.initState();
-    _loadCompanyInfo();
+    // ✅ CORREÇÃO: usa whenComplete para garantir que o setState
+    // só ocorre depois que todos os dados foram carregados
+    _loadCompanyInfo().whenComplete(() {
+      if (mounted) {
+        setState(() => _isLoadingCompany = false);
+      }
+    });
   }
 
   Future<void> _loadCompanyInfo() async {
@@ -35,34 +45,42 @@ class _EmployeesPageState extends State<EmployeesPage> {
     final storedName = prefs.getString('companyName');
     final storedId = prefs.getString('companyId');
 
-    if (storedName != null) {
+    if (storedName != null && storedId != null) {
       _companyName = storedName;
-    }
-    if (storedId != null) {
       _companyId = storedId;
+      debugPrint('✅ Empresa carregada do SharedPreferences: $_companyName (ID: $_companyId)');
+      return; // dados encontrados localmente, não precisa ir ao Firestore
     }
 
-    if (_companyId == null) {
-      final query = await FirebaseFirestore.instance
+    debugPrint('🔍 Buscando empresa no Firestore para UID: ${user.uid}');
+    var query = await FirebaseFirestore.instance
+        .collection('companies')
+        .where('ownerUid', isEqualTo: user.uid)
+        .limit(1)
+        .get();
+
+    // Fallback: tenta campo 'userId' caso o documento use nomenclatura diferente
+    if (query.docs.isEmpty) {
+      debugPrint('⚠️ Campo ownerUid não encontrado. Tentando com userId...');
+      query = await FirebaseFirestore.instance
           .collection('companies')
-          .where('ownerUid', isEqualTo: user.uid)
+          .where('userId', isEqualTo: user.uid)
           .limit(1)
           .get();
-
-      if (query.docs.isNotEmpty) {
-        final doc = query.docs.first;
-        _companyId = doc.id;
-        _companyName = doc.data()['name'] as String?;
-        if (_companyId != null) {
-          await prefs.setString('companyId', _companyId!);
-        }
-        if (_companyName != null) {
-          await prefs.setString('companyName', _companyName!);
-        }
-      }
     }
 
-    setState(() {});
+    if (query.docs.isNotEmpty) {
+      final doc = query.docs.first;
+      _companyId = doc.id;
+      _companyName = (doc.data()['name'] ?? doc.data()['companyName']) as String?;
+      debugPrint('✅ Empresa encontrada no Firestore: $_companyName (ID: $_companyId)');
+
+      // Salva localmente para as próximas sessões
+      if (_companyId != null) await prefs.setString('companyId', _companyId!);
+      if (_companyName != null) await prefs.setString('companyName', _companyName!);
+    } else {
+      debugPrint('❌ Nenhuma empresa encontrada no Firestore para este UID!');
+    }
   }
 
   Future<String> _generateUniqueCode() async {
@@ -134,10 +152,24 @@ class _EmployeesPageState extends State<EmployeesPage> {
         'createdAt': Timestamp.now(),
       });
 
+      // Também salva o funcionário na coleção principal para aparecer na lista imediatamente
+      await FirebaseFirestore.instance.collection('employees').doc(_generatedCode).set({
+        'id': _generatedCode,
+        'name': _employeeNameController.text.trim(),
+        'role': _roleController.text.trim(),
+        'email': 'Aguardando 1º acesso...', // Fica como pendente até o funcionário logar
+        'companyCode': _generatedCode,
+        'companyId': _companyId,
+        'companyName': _companyName,
+        'linkedAt': Timestamp.now(),
+      });
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('D-CODE salvo e pronto para ser usado.')),
       );
+      // Volta para a lista de funcionários automaticamente após adicionar
+      Navigator.of(context).pop();
     } catch (e) {
       _showError('Erro ao salvar o D-CODE. Tente novamente.');
     } finally {
@@ -165,6 +197,16 @@ class _EmployeesPageState extends State<EmployeesPage> {
   Widget build(BuildContext context) {
     const Color primaryBlue = Color(0xFF005EB8);
     const Color lightBlue = Color(0xFF2196F3);
+
+    // ✅ CORREÇÃO: exibe loading enquanto os dados da empresa são carregados
+    if (_isLoadingCompany) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFEFF4FB),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF005EB8)),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFEFF4FB),
@@ -240,26 +282,42 @@ class _EmployeesPageState extends State<EmployeesPage> {
                             : const Text('Gerar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(height: 12),
-                      Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFB0C6E4)),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _generatedCode ?? 'D-0000',
-                          style: const TextStyle(
-                            color: Color(0xFF0D3D91),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                          InkWell(
+                            onTap: () async {
+                              if (_generatedCode != null) {
+                                await Clipboard.setData(ClipboardData(text: _generatedCode!));
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Código copiado com sucesso!'),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFB0C6E4)),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _generatedCode ?? 'D-0000',
+                                style: const TextStyle(
+                                  color: Color(0xFF0D3D91),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                       const SizedBox(height: 4),
-                      const Text(
-                        '*Copie o código e envie ao funcionário',
+                          const Text(
+                            '*Clique no código para copiar e envie ao funcionário',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 18),

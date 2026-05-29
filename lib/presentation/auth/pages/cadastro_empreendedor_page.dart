@@ -91,6 +91,7 @@ class _SignupPageState extends State<SignupPage> {
         await FirebaseFirestore.instance.collection('companies').doc(user.uid).set({
           'name': company,
           'ownerUid': user.uid,
+          'userId': user.uid, 
           'createdAt': Timestamp.now(),
         });
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({

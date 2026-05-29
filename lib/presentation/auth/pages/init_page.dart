@@ -19,7 +19,7 @@ class InitPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'lib/assets/daily_company.png',
+                  'lib/assets/logo_company.png',
                   height: 120,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
