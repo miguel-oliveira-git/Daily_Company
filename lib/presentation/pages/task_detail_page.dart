@@ -237,7 +237,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 value: _currentStatus,
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: _isCreator ? Colors.white : Colors.grey.shade200,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -249,29 +249,54 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     child: Text(_formatStatusLabel(status)),
                   );
                 }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() => _currentStatus = newValue);
-                  }
-                },
+                // Desabilita a mudança manual do status se for funcionário
+                onChanged: _isCreator 
+                    ? (String? newValue) {
+                        if (newValue != null) {
+                          setState(() => _currentStatus = newValue);
+                        }
+                      }
+                    : null,
               ),
               
-              const SizedBox(height: 40),
-              
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveTask,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (!_isCreator && _currentStatus != 'concluida') ...[
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSaving ? null : () {
+                      setState(() => _currentStatus = 'concluida');
+                      _saveTask();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.check_circle, color: Colors.white),
+                    label: const Text('Concluir Tarefa', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
-                  child: _isSaving
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Salvar Alterações', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-              ),
+              ],
+              
+              // Esconde o botão de salvar alterações se for funcionário
+              if (_isCreator) ...[
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _saveTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Salvar Alterações', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -13,6 +13,7 @@ class TaskModel {
   final String creatorId;
   final String status;
   final DateTime createdAt;
+  final DateTime? deadline;
 
   TaskModel({
     required this.id,
@@ -27,6 +28,7 @@ class TaskModel {
     required this.creatorId,
     this.status = 'pending',
     required this.createdAt,
+    this.deadline,
   });
 
   Map<String, dynamic> toFirestore() {
@@ -43,6 +45,7 @@ class TaskModel {
       'creatorId': creatorId,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
+      'deadline': deadline != null ? Timestamp.fromDate(deadline!) : null,
     };
   }
 
@@ -61,6 +64,7 @@ class TaskModel {
       creatorId: data['creatorId'] ?? '',
       status: data['status'] ?? 'pending',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      deadline: data['deadline'] != null ? (data['deadline'] as Timestamp).toDate() : null,
     );
   }
 }

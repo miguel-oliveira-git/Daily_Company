@@ -208,37 +208,41 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                Container(
-                  height: 180,
-                  decoration: const BoxDecoration(
-                    color: primaryBlue,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(80),
-                    ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF005EB8), Color(0xFF2196F3)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
                   ),
                 ),
-                Positioned(
-                  top: 50,
-                  left: 20,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 30,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Cadastro',
+                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -315,6 +319,7 @@ class _SignupPageFuncionarioState extends State<SignupPageFuncionario> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

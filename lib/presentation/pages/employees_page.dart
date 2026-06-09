@@ -16,6 +16,7 @@ class EmployeesPage extends StatefulWidget {
 class _EmployeesPageState extends State<EmployeesPage> {
   final TextEditingController _employeeNameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   String? _generatedCode;
   String? _companyName;
   String? _companyId;
@@ -104,8 +105,13 @@ class _EmployeesPageState extends State<EmployeesPage> {
       return;
     }
 
-    if (_employeeNameController.text.trim().isEmpty || _roleController.text.trim().isEmpty) {
-      _showError('Preencha o nome e o cargo do funcionário antes de gerar o D-CODE.');
+    if (_employeeNameController.text.trim().isEmpty || _roleController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
+      _showError('Preencha o nome, cargo e e-mail do funcionário antes de gerar o D-CODE.');
+      return;
+    }
+
+    if (!_emailController.text.contains('@')) {
+      _showError('Insira um e-mail válido para o funcionário.');
       return;
     }
 
@@ -149,6 +155,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
         'companyName': _companyName,
         'employeeName': _employeeNameController.text.trim(),
         'employeeRole': _roleController.text.trim(),
+        'employeeEmail': _emailController.text.toLowerCase().trim(),
         'createdAt': Timestamp.now(),
       });
 
@@ -157,7 +164,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
         'id': _generatedCode,
         'name': _employeeNameController.text.trim(),
         'role': _roleController.text.trim(),
-        'email': 'Aguardando 1º acesso...', // Fica como pendente até o funcionário logar
+        'email': 'Aguardando 1º acesso...', // Evita conflito de "E-mail já em uso" na tela de cadastro do funcionário
         'companyCode': _generatedCode,
         'companyId': _companyId,
         'companyName': _companyName,
@@ -190,6 +197,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
   void dispose() {
     _employeeNameController.dispose();
     _roleController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -262,6 +270,8 @@ class _EmployeesPageState extends State<EmployeesPage> {
                       _buildInput('Nome do funcionário', _employeeNameController, 'Digite aqui'),
                       const SizedBox(height: 14),
                       _buildInput('Cargo exercido', _roleController, 'Digite aqui'),
+                      const SizedBox(height: 14),
+                      _buildInput('E-mail que o funcionário usará', _emailController, 'exemplo@email.com'),
                       const SizedBox(height: 18),
                       ElevatedButton(
                         onPressed: _isGenerating ? null : _handleGenerateCode,

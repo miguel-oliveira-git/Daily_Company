@@ -20,6 +20,7 @@ class _TaskAssignmentPageState extends State<TaskAssignmentPage> {
   final _linkController = TextEditingController();
   
   DateTime? _selectedDate;
+  DateTime? _selectedDeadline;
   TimeOfDay? _selectedTime;
   EmployeeModel? _selectedEmployee;
   
@@ -74,6 +75,30 @@ class _TaskAssignmentPageState extends State<TaskAssignmentPage> {
     }
   }
 
+  Future<void> _pickDeadline() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: _selectedDate ?? DateTime.now(),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF005EB8),
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (date != null && mounted) {
+      setState(() => _selectedDeadline = date);
+    }
+  }
+
   Future<void> _pickTime() async {
     final time = await showTimePicker(
       context: context,
@@ -125,6 +150,7 @@ class _TaskAssignmentPageState extends State<TaskAssignmentPage> {
         companyId: widget.companyId,
         creatorId: user?.uid ?? '',
         createdAt: DateTime.now(),
+        deadline: _selectedDeadline,
       );
 
       await _taskRepo.createTask(task);
@@ -255,9 +281,9 @@ class _TaskAssignmentPageState extends State<TaskAssignmentPage> {
                                   const SizedBox(width: 8),
                                   Text(
                                     _selectedDate == null 
-                                      ? 'Definir Data' 
+                                      ? 'Data de Início' 
                                       : '${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.year}',
-                                    style: TextStyle(color: _selectedDate == null ? Colors.black54 : Colors.black87),
+                                    style: TextStyle(color: _selectedDate == null ? Colors.black54 : Colors.black87, fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -287,6 +313,34 @@ class _TaskAssignmentPageState extends State<TaskAssignmentPage> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    InkWell(
+                      onTap: _pickDeadline,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.date_range, color: primaryBlue, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _selectedDeadline == null 
+                                  ? 'Adicionar Prazo Final (Opcional)' 
+                                  : 'Prazo: ${_selectedDeadline!.day.toString().padLeft(2, '0')}/${_selectedDeadline!.month.toString().padLeft(2, '0')}/${_selectedDeadline!.year}',
+                                style: TextStyle(color: _selectedDeadline == null ? primaryBlue : Colors.black87, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            if (_selectedDeadline != null)
+                              GestureDetector(
+                                onTap: () => setState(() => _selectedDeadline = null),
+                                child: const Icon(Icons.close, color: Colors.grey, size: 20),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     
