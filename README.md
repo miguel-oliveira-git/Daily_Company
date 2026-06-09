@@ -1,6 +1,6 @@
 # daily_company
 
-Este é o projeto Flutter do app Daily Company.
+Este é o projeto Flutter do Daily Company.
 
 ## Como compartilhar com o grupo
 
